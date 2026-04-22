@@ -1,0 +1,12 @@
+{
+  "name": "ai-search-agent-cli",
+  "version": "1.0.0",
+  "description": "CLI for AI Search Agent",
+  "main": "index.js",
+  "bin": { "agent": "./index.js" },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "dotenv": "^16.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}

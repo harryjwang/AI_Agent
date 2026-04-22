@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Search Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --accent: #7c6af7;
+      --accent2: #5eead4;
+      --text: #e2e2ef;
+      --muted: #7878a0;
+      --success: #4ade80;
+      --warning: #fb923c;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1.2rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--surface);
+    }
+
+    header h1 { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+    header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 2rem;
+    }
+
+    .tab {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    .view { display: none; flex: 1; flex-direction: column; }
+    .view.active { display: flex; }
+
+    /* ── Ask view ── */
+    .ask-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+      gap: 1rem;
+    }
+
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      padding-bottom: 1rem;
+    }
+
+    .message { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .message.user .bubble {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.7rem 1rem;
+      border-radius: 16px 16px 4px 16px;
+      max-width: 80%;
+      font-size: 0.95rem;
+    }
+
+    .message.agent .bubble {
+      align-self: flex-start;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1.1rem;
+      border-radius: 4px 16px 16px 16px;
+      max-width: 90%;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .message .meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 0 0.25rem;
+    }
+
+    .message.agent .meta { align-self: flex-start; display: flex; gap: 0.75rem; align-items: center; }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 99px;
+      font-weight: 500;
+    }
+
+    .badge.search { background: #1e3a5f; color: var(--accent2); }
+    .badge.direct { background: #1e2d1e; color: var(--success); }
+    .badge.rag    { background: #2d1e3a; color: #c084fc; }
+
+    .correct-btn {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .correct-btn:hover { color: var(--warning); border-color: var(--warning); }
+
+    .input-row {
+      display: flex;
+      gap: 0.6rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.5rem;
+      transition: border-color 0.15s;
+    }
+
+    .input-row:focus-within { border-color: var(--accent); }
+
+    #query-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 0.4rem 0.5rem;
+      resize: none;
+      height: 44px;
+      line-height: 1.5;
+    }
+
+    #query-input::placeholder { color: var(--muted); }
+
+    .send-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 1.1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Correct modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.75rem;
+      width: min(480px, 90vw);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal h2 { font-size: 1rem; font-weight: 600; }
+    .modal p { font-size: 0.85rem; color: var(--muted); }
+
+    .modal label { font-size: 0.82rem; color: var(--muted); display: block; margin-bottom: 0.35rem; }
+
+    .modal textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.65rem 0.8rem;
+      font-size: 0.9rem;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .modal textarea:focus { border-color: var(--accent); }
+
+    .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+    .btn-ghost {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+    }
+
+    .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+
+    .btn-primary {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 0.5rem 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary:hover { opacity: 0.85; }
+
+    /* ── History view ── */
+    .list-view {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .list-view h2 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card .q { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.4rem; }
+    .card .a { font-size: 0.85rem; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
+    .card .card-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; display: flex; gap: 0.75rem; }
+
+    .empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 3rem; }
+
+    /* ── Corrections view ── */
+    .delete-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+    }
+
+    .delete-btn:hover { color: #f87171; border-color: #f87171; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="dot"></div>
+  <h1>AI Search Agent</h1>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('ask')">Ask</div>
+  <div class="tab" onclick="switchTab('history')">History</div>
+  <div class="tab" onclick="switchTab('corrections')">Corrections</div>
+</div>
+
+<!-- ASK VIEW -->
+<div class="view active" id="view-ask">
+  <div class="ask-container">
+    <div class="chat-history" id="chat-history">
+      <div class="empty" id="empty-state">Ask anything — the agent will search the web if needed.</div>
+    </div>
+    <div class="input-row">
+      <textarea id="query-input" placeholder="Ask anything..." rows="1"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendQuery()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY VIEW -->
+<div class="view" id="view-history">
+  <div class="list-view">
+    <h2>Question History</h2>
+    <div id="history-list"><div class="empty">No history yet.</div></div>
+  </div>
+</div>
+
+<!-- CORRECTIONS VIEW -->
+<div class="view" id="view-corrections">
+  <div class="list-view">
+    <h2>Stored Corrections</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">These are injected into the agent's context when similar questions are asked.</p>
+    <div id="corrections-list"><div class="empty">No corrections yet.</div></div>
+  </div>
+</div>
+
+<!-- CORRECTION MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Correct this answer</h2>
+    <p>Your correction will be stored and used the next time a similar question is asked.</p>
+    <div>
+      <label>Original question</label>
+      <textarea id="modal-query" readonly style="opacity:0.6;resize:none;height:54px;"></textarea>
+    </div>
+    <div>
+      <label>The correct answer</label>
+      <textarea id="modal-correct" placeholder="Type the correct answer here..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitCorrection()">Save correction</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentQuery = '';
+  let currentAnswer = '';
+
+  // ── Tab switching ──
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['ask','history','corrections'][i] === name);
+    });
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${name}`).classList.add('active');
+    if (name === 'history') loadHistory();
+    if (name === 'corrections') loadCorrections();
+  }
+
+  // ── Send query ──
+  async function sendQuery() {
+    const input = document.getElementById('query-input');
+    const query = input.value.trim();
+    if (!query) return;
+
+    input.value = '';
+    document.getElementById('empty-state')?.remove();
+
+    appendMessage('user', query);
+    const loadingId = appendLoading();
+
+    document.getElementById('send-btn').disabled = true;
+
+    try {
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      removeLoading(loadingId);
+
+      if (data.error) {
+        appendMessage('agent', `Error: ${data.error}`, 'direct', 0, query, data.error);
+      } else {
+        currentQuery = query;
+        currentAnswer = data.answer;
+        appendMessage('agent', data.answer, data.query_type, data.corrections_used, query, data.answer);
+      }
+    } catch (err) {
+      removeLoading(loadingId);
+      appendMessage('agent', `Network error: ${err.message}`, 'direct', 0, query, '');
+    }
+
+    document.getElementById('send-btn').disabled = false;
+  }
+
+  function appendMessage(role, text, queryType, correctionsUsed, query, answer) {
+    const history = document.getElementById('chat-history');
+    const msg = document.createElement('div');
+    msg.className = `message ${role}`;
+
+    if (role === 'user') {
+      msg.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+    } else {
+      const typeBadge = queryType
+        ? `<span class="badge ${queryType}">${queryType === 'search' ? '🔍 web search' : '🧠 direct'}</span>`
+        : '';
+      const ragBadge = correctionsUsed > 0
+        ? `<span class="badge rag">✦ ${correctionsUsed} correction${correctionsUsed > 1 ? 's' : ''} applied</span>`
+        : '';
+      const msgId = `msg-${Date.now()}`;
+      msg.innerHTML = `
+        <div class="bubble" id="${msgId}">${escapeHtml(text)}</div>
+        <div class="meta">
+          ${typeBadge}${ragBadge}
+          <button class="correct-btn" onclick="openModal(${JSON.stringify(query)}, ${JSON.stringify(answer)})">✎ Correct this</button>
+        </div>`;
+    }
+
+    history.appendChild(msg);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function appendLoading() {
+    const history = document.getElementById('chat-history');
+    const id = `loading-${Date.now()}`;
+    const el = document.createElement('div');
+    el.className = 'message agent';
+    el.id = id;
+    el.innerHTML = `<div class="bubble"><span class="spinner"></span></div>`;
+    history.appendChild(el);
+    history.scrollTop = history.scrollHeight;
+    return id;
+  }
+
+  function removeLoading(id) {
+    document.getElementById(id)?.remove();
+  }
+
+  // ── Correction modal ──
+  function openModal(query, answer) {
+    document.getElementById('modal-query').value = query;
+    document.getElementById('modal-correct').value = '';
+    document.getElementById('modal').dataset.query = query;
+    document.getElementById('modal').dataset.original = answer;
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+  }
+
+  async function submitCorrection() {
+    const modal = document.getElementById('modal');
+    const query = modal.dataset.query;
+    const original_answer = modal.dataset.original;
+    const correct_answer = document.getElementById('modal-correct').value.trim();
+
+    if (!correct_answer) return;
+
+    try {
+      await fetch('/api/corrections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, original_answer, correct_answer }),
+      });
+      closeModal();
+      // Brief confirmation
+      const btn = document.querySelector('.btn-primary');
+      btn.textContent = '✓ Saved!';
+      setTimeout(() => btn.textContent = 'Save correction', 1500);
+    } catch (err) {
+      alert('Failed to save correction: ' + err.message);
+    }
+  }
+
+  // ── History tab ──
+  async function loadHistory() {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '<div class="empty">Loading...</div>';
+    try {
+      const res = await fetch('/api/history?limit=30');
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty">No history yet.</div>'; return; }
+      list.innerHTML = data.map(item => `
+        <div class="card">
+          <div class="q">${escapeHtml(item.query)}</div>
+          <div class="a">${escapeHtml(item.answer.slice(0, 300))}${item.answer.length > 300 ? '...' : ''}</div>
+          <div class="card-meta">
+            <span class="badge ${item.query_type}">${item.query_type}</span>
+            <span>${new Date(item.created_at).toLocaleString()}</span>
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+    }
+  }
+
+  // ── Corrections tab ──
+  async function loadCorrections() {
+    const list = document.getElementById('corrections-list');
+    list.innerHTML = '<div class="empty">Loading...</div>';
+    try {
+      const res = await fetch('/api/corrections');
+      const data = await res.json();
+      if (!data.length) { list.innerHTML = '<div class="empty">No corrections yet.</div>'; return; }
+      list.innerHTML = data.map(item => `
+        <div class="card" id="corr-${item.id}">
+          <div style="display:flex;align-items:flex-start;gap:0.5rem">
+            <div style="flex:1">
+              <div class="q">${escapeHtml(item.query)}</div>
+              <div class="a" style="margin-top:0.35rem"><span style="color:#c084fc">✦ Correct:</span> ${escapeHtml(item.correct_answer)}</div>
+            </div>
+            <button class="delete-btn" onclick="deleteCorrection(${item.id})">delete</button>
+          </div>
+          <div class="card-meta"><span>${new Date(item.created_at).toLocaleString()}</span></div>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty">Error: ${err.message}</div>`;
+    }
+  }
+
+  async function deleteCorrection(id) {
+    await fetch(`/api/corrections/${id}`, { method: 'DELETE' });
+    document.getElementById(`corr-${id}`)?.remove();
+  }
+
+  // ── Helpers ──
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('query-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
+  });
+</script>
+</body>
+</html>
