@@ -1,10 +1,13 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from .state import AgentState
 from .tools import search_web
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
-
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
 # ─────────────────────────────────────────────
 # NODE 1: Router
