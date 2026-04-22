@@ -35,7 +35,7 @@ program
       }
 
       const typeLabel = data.query_type === 'search' ? '🔍 web search' : '🧠 direct';
-      const ragLabel  = data.corrections_used > 0 ? ` | ✦ ${data.corrections_used} correction(s) applied` : '';
+      const ragLabel = data.corrections_used > 0 ? ` | ✦ ${data.corrections_used} correction(s) applied` : '';
       console.log(`[${typeLabel}${ragLabel}]\n`);
       console.log(data.answer);
       console.log('');
