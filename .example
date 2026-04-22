@@ -1,0 +1,6 @@
+GOOGLE_API_KEY=AIzaSyDMJiVJhQu8dYK-3_VftlBQRRkOzmm_hbs
+TAVILY_API_KEY=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
+DATABASE_URL=postgresql://harrywang@localhost:5432/ai_search_agent
+PORT=3000
+AGENT_URL=http://localhost:5001
+API_URL=http://localhost:3000
