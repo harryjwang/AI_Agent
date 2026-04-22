@@ -1,13 +1,13 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from .state import AgentState
 from .tools import search_web
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 
 # ─────────────────────────────────────────────
 # NODE 1: Router
